@@ -1,46 +1,47 @@
-import Post from './models/post';
+import Rushing from './models/rushing';
+import rushingColumns from '../common/RushingColumn';
+const fs = require('fs');
 
 export default function () {
-  Post.count().exec((err, count) => {
+  Rushing.count().exec((err, count) => {
     if (count > 0) {
       return;
     }
 
-    const content1 = `Sed ut perspiciatis unde omnis iste natus error
-      sit voluptatem accusantium doloremque laudantium, totam rem aperiam,
-      eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae
-      vitae dicta sunt explicabo. Nemo enim ipsam voluptatem quia voluptas sit
-      aspernatur aut odit aut fugit, sed quia consequuntur magni dolores eos
-      qui ratione voluptatem sequi nesciunt. Neque porro quisquam est, qui dolorem
-      ipsum quia dolor sit amet. Lorem ipsum dolor sit amet, consectetur adipiscing elit,
-      sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut
-      enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi
-      ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit
-      in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint
-      occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id
-      est laborum`;
+    try {
+      fs.readFile('./server/rushing.json', {encoding: 'utf8'},
+        (err, data) => {
+          if (err) {
+            throw err;
+          }
 
-    const content2 = `Lorem ipsum dolor sit amet, consectetur adipiscing elit,
-      sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut
-      enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi
-      ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit
-      in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint
-      occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id
-      est laborum. Sed ut perspiciatis unde omnis iste natus error
-      sit voluptatem accusantium doloremque laudantium, totam rem aperiam,
-      eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae
-      vitae dicta sunt explicabo. Nemo enim ipsam voluptatem quia voluptas sit
-      aspernatur aut odit aut fugit, sed quia consequuntur magni dolores eos
-      qui ratione voluptatem sequi nesciunt. Neque porro quisquam est, qui dolorem
-      ipsum quia dolor sit amet.`;
+          const rushingJson = JSON.parse(data);
+          //console.log('rushingJson: ', rushingJson);
+          for (let i = 0; i < rushingJson.length; ++i) {
+            const rushingElem = rushingJson[i];
+            //console.log('rushingElem: ', rushingElem);
 
-    const post1 = new Post({ name: 'Admin', title: 'Hello MERN', slug: 'hello-mern', cuid: 'cikqgkv4q01ck7453ualdn3hd', content: content1 });
-    const post2 = new Post({ name: 'Admin', title: 'Lorem Ipsum', slug: 'lorem-ipsum', cuid: 'cikqgkv4q01ck7453ualdn3hf', content: content2 });
+            let rushingObj = {};
+            for (let j = 0; j < rushingColumns.length; ++j) {
+              const col = rushingColumns[j];
+              //console.log('col: ', col);
+              if (col.inputSanitizer) {
+                rushingObj[col.name] = col.inputSanitizer(rushingElem[col.inputName]);
+              } else {
+                rushingObj[col.name] = rushingElem[col.inputName];
+              }
+            }
+            const rushingStat = new Rushing(rushingObj);
 
-    Post.create([post1, post2], (error) => {
-      if (!error) {
-        // console.log('ready to go....');
-      }
-    });
+            rushingStat.save((err) => {
+              if (err) {
+                throw 'Error saving stat: ' + err;
+              }
+            });
+          }
+      });
+    } catch (err) {
+      console.error('error: ', err);
+    }
   });
 }
